@@ -1,0 +1,173 @@
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+import org.json.JSONException;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Map;
+
+public class SdApiUtils_New {
+
+    public boolean verifyDataset(String jsonData, String datasetName) throws JSONException {
+        // Parse the JSON data
+        JSONObject jsonObject;
+        try {
+            jsonObject = new JSONObject(new JSONTokener(jsonData));
+        } catch (Exception ex) {
+            System.out.println("Invalid JSON data: " + ex.getMessage());
+            return false;
+        }
+
+        // Check if 'datasets' key exists in the JSON data
+        if (!jsonObject.has("datasets")) {
+            System.out.println("No 'datasets' key found in JSON data.");
+            return false;
+        }
+
+        // Iterate through each dataset and verify the specified name
+        JSONArray datasets = jsonObject.getJSONArray("datasets");
+        for (int i = 0; i < datasets.length(); i++) {
+            JSONObject dataset = datasets.getJSONObject(i);
+            if (dataset.getString("name").equals(datasetName)) {
+                System.out.println("Dataset '" + datasetName + "' found in JSON data.");
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public ArrayList<String> getDatasetList(String jsonData, String fieldName) throws JSONException {
+        // Parse the JSON data
+        JSONObject jsonObject;
+        ArrayList<String> datasetsList = new ArrayList<>();
+
+        try {
+            jsonObject = new JSONObject(new JSONTokener(jsonData));
+        } catch (Exception ex) {
+            System.out.println("Invalid JSON data: " + ex.getMessage());
+            return datasetsList;
+        }
+
+        // Check if 'datasets' key exists in the JSON data
+        if (!jsonObject.has("datasets")) {
+            System.out.println("No 'datasets' key found in JSON data.");
+            return datasetsList;
+        }
+
+        // Iterate through each dataset and extract the specified field
+        JSONArray datasets = jsonObject.getJSONArray("datasets");
+        for (int i = 0; i < datasets.length(); i++) {
+            JSONObject dataset = datasets.getJSONObject(i);
+            if (dataset.has(fieldName)) {
+                datasetsList.add(i, dataset.getString(fieldName));
+                System.out.println("'" + fieldName + "' found in JSON data.");
+            }
+        }
+        return datasetsList;
+    }
+
+    public int getNestedFieldCount(String jsonResponse, String fieldName, String nestedNodeName) {
+        JsonNode rootNode = parseJson(jsonResponse);
+
+        if (rootNode != null) {
+            if (nestedNodeName != null && !nestedNodeName.isEmpty()) {
+                return countItemsNested(rootNode, fieldName, nestedNodeName);
+            } else {
+                return countItems(rootNode, fieldName);
+            }
+        } else {
+            return 0;
+        }
+    }
+
+    private JsonNode parseJson(String jsonResponse) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readTree(jsonResponse);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return null;
+        }
+    }
+
+    private int countItems(JsonNode node, String fieldName) {
+        if (node.has(fieldName) && node.get(fieldName).isArray()) {
+            return node.get(fieldName).size();
+        }
+        return 0;
+    }
+
+    private int countFieldOccurrences(JsonNode node, String fieldName) {
+        if (node == null) {
+            return 0;
+        }
+
+        int count = 0;
+
+        if (node.isArray()) {
+            for (JsonNode item : node) {
+                count += countFieldOccurrences(item, fieldName);
+            }
+        } else if (node.isObject()) {
+            if (node.has(fieldName)) {
+                count += 1; // Field found, count it
+            }
+
+            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                count += countFieldOccurrences(field.getValue(), fieldName);
+            }
+        }
+
+        return count;
+    }
+
+    private int countItemsNested(JsonNode rootNode, String fieldName, String nestedNodeName) {
+        JsonNode nestedNode = rootNode.get(nestedNodeName);
+
+        if (nestedNode != null) {
+            if (nestedNode.isArray()) {
+                int count = 0;
+                for (JsonNode item : nestedNode) {
+                    count += countFieldOccurrences(item, fieldName);
+                }
+                return count;
+            } else if (nestedNode.isObject()) {
+                return countFieldOccurrences(nestedNode, fieldName);
+            }
+        }
+        return 0;
+    }
+
+    // Example usage
+    public static void main(String[] args) {
+        SdApiUtils_New util = new SdApiUtils_New();
+        
+        String jsonData = "{ /* JSON data here */ }";
+        String datasetName = "Test Dataset Name";
+
+        try {
+            // Verify Dataset
+            boolean isVerified = util.verifyDataset(jsonData, datasetName);
+            System.out.println("Dataset Verified: " + isVerified);
+
+            // Get Dataset List
+            ArrayList<String> datasetList = util.getDatasetList(jsonData, "name");
+            System.out.println("Dataset List: " + datasetList);
+
+            // Get Nested Field Count
+            int count = util.getNestedFieldCount(jsonData, "catalogId", "reports");
+            System.out.println("Nested Field Count: " + count);
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+}
