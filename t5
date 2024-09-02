@@ -1,0 +1,117 @@
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
+
+public class SdApiUtils_New {
+
+    /**
+     * Parse a JSON string into a JsonNode.
+     *
+     * @param jsonData The JSON data as a String.
+     * @return The parsed JsonNode.
+     */
+    private JsonNode parseJson(String jsonData) {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            return mapper.readTree(jsonData);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * Counts occurrences of a specific field within a specified nested node.
+     *
+     * @param jsonData       The JSON data as a String.
+     * @param fieldName      The field name to count.
+     * @param nestedNodeName The name of the nested node to search within.
+     * @return The count of occurrences of the specified field within the nested node.
+     */
+    public int getNestedFieldCount(String jsonData, String fieldName, String nestedNodeName) {
+        JsonNode rootNode = parseJson(jsonData); // Parse the JSON string
+        int count = 0;
+
+        // Check if the root node has the nested node
+        if (rootNode != null && rootNode.has(nestedNodeName)) {
+            JsonNode nestedNode = rootNode.get(nestedNodeName);
+
+            // If the nested node is an array, loop through each item
+            if (nestedNode.isArray()) {
+                for (JsonNode item : nestedNode) {
+                    count += countFieldOccurrences(item, fieldName);
+                }
+            }
+            // If it's not an array but an object
+            else if (nestedNode.isObject()) {
+                count += countFieldOccurrences(nestedNode, fieldName);
+            }
+        }
+
+        return count;
+    }
+
+    /**
+     * Counts occurrences of a specific field anywhere in the JSON structure.
+     *
+     * @param jsonData  The JSON data as a String.
+     * @param fieldName The field name to count.
+     * @return The total count of occurrences of the specified field across all levels in the JSON.
+     */
+    public int getFieldCount(String jsonData, String fieldName) {
+        JsonNode rootNode = parseJson(jsonData); // Parse the JSON string
+        return countFieldOccurrences(rootNode, fieldName);
+    }
+
+    /**
+     * Recursively counts occurrences of a specific field within nested objects or arrays.
+     *
+     * @param node      The root JSON node to search.
+     * @param fieldName The field name to count.
+     * @return The total count of occurrences of the specified field within the JSON node.
+     */
+    private int countFieldOccurrences(JsonNode node, String fieldName) {
+        int count = 0;
+
+        if (node == null) {
+            return count;
+        }
+
+        // If the node contains the field directly, increase the count
+        if (node.has(fieldName)) {
+            count++;
+        }
+
+        // Recursively check for the field in nested objects or arrays
+        if (node.isObject()) {
+            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                count += countFieldOccurrences(field.getValue(), fieldName);
+            }
+        } else if (node.isArray()) {
+            for (JsonNode item : node) {
+                count += countFieldOccurrences(item, fieldName);
+            }
+        }
+
+        return count;
+    }
+
+    // Test method
+    public static void main(String[] args) {
+        String jsonData = "{ \"datasets\": [ { \"name\": \"SDC_Dataset_PSD_01\", \"reports\": [{ \"catalogId\": \"e1f0a50b\" }] }, { \"reports\": [{ \"catalogId\": \"1234\" }] } ] }";
+        SdApiUtils_New util = new SdApiUtils_New();
+
+        // Count occurrences of 'catalogId' inside 'reports'
+        int nestedCount = util.getNestedFieldCount(jsonData, "catalogId", "reports");
+        System.out.println("Catalog ID Count inside 'reports': " + nestedCount); // Should print 2
+
+        // Count total occurrences of 'reports' in the entire JSON
+        int reportsCount = util.getFieldCount(jsonData, "reports");
+        System.out.println("Total 'reports' Count: " + reportsCount); // Should print 2
+    }
+}
