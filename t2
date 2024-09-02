@@ -1,0 +1,140 @@
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Map;
+
+@Component
+public class SdhApiUtils_Improved {
+
+    // Verifies if a dataset with the specified name exists in the JSON data
+    public boolean verifyDataset(String jsonData, String datasetName) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode jsonObject = mapper.readTree(jsonData);
+
+        if (!jsonObject.has("datasets")) {
+            System.out.println("No 'datasets' key found in JSON data.");
+            return false;
+        }
+
+        for (JsonNode dataset : jsonObject.get("datasets")) {
+            if (dataset.has("name") && dataset.get("name").asText().equals(datasetName)) {
+                System.out.println("Dataset '" + datasetName + "' found in JSON data.");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Returns a list of the field values for a given field name within datasets
+    public ArrayList<String> getDatasetList(String jsonData, String fieldName) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode jsonObject = mapper.readTree(jsonData);
+
+        ArrayList<String> datasetList = new ArrayList<>();
+
+        if (!jsonObject.has("datasets")) {
+            System.out.println("No 'datasets' key found in JSON data.");
+            return datasetList;
+        }
+
+        for (JsonNode dataset : jsonObject.get("datasets")) {
+            if (dataset.has(fieldName)) {
+                datasetList.add(dataset.get(fieldName).asText());
+            }
+        }
+        return datasetList;
+    }
+
+    // Counts the occurrences of nested fields within the JSON structure
+    public int getNestedFieldCount(String jsonResponse, String fieldName, String nestedNodeName) throws IOException {
+        JsonNode rootNode = parseJson(jsonResponse);
+
+        if (rootNode != null) {
+            if (nestedNodeName != null && !nestedNodeName.isEmpty()) {
+                return countItemsNested(rootNode, fieldName, nestedNodeName);
+            } else {
+                return countFieldOccurrences(rootNode, fieldName);
+            }
+        }
+
+        return 0;
+    }
+
+    // Helper method to parse JSON data into JsonNode
+    private JsonNode parseJson(String jsonResponse) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readTree(jsonResponse);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return null;
+        }
+    }
+
+    // Counts the number of items in a field within a JSON node
+    private int countFieldOccurrences(JsonNode node, String fieldName) {
+        int count = 0;
+
+        if (node != null) {
+            if (node.isArray()) {
+                for (JsonNode item : node) {
+                    count += countFieldOccurrences(item, fieldName);
+                }
+            } else if (node.isObject()) {
+                if (node.has(fieldName)) {
+                    count++;
+                }
+
+                Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+                while (fields.hasNext()) {
+                    Map.Entry<String, JsonNode> field = fields.next();
+                    count += countFieldOccurrences(field.getValue(), fieldName);
+                }
+            }
+        }
+
+        return count;
+    }
+
+    // Counts the number of items in nested fields
+    private int countItemsNested(JsonNode rootNode, String fieldName, String nestedNodeName) {
+        JsonNode nestedNode = rootNode.get(nestedNodeName);
+        if (nestedNode != null) {
+            if (nestedNode.isArray()) {
+                int count = 0;
+                for (JsonNode item : nestedNode) {
+                    count += countFieldOccurrences(item, fieldName
+                }
+                return count;
+            } else if (nestedNode.isObject()) {
+                return countFieldOccurrences(nestedNode, fieldName);
+            }
+        }
+        return 0;
+    }
+
+    // Example usage
+    public static void main(String[] args) throws IOException {
+        SdhApiUtils_Improved utils = new SdhApiUtils_Improved();
+
+        // Example JSON string
+        String jsonResponse = "{ \"datasets\": [ ... ] }"; // Add your complete JSON structure here
+
+        // Example: Verify a dataset exists
+        boolean datasetExists = utils.verifyDataset(jsonResponse, "SDC_Dataset_PSD_01");
+        System.out.println("Dataset Exists: " + datasetExists);
+
+        // Example: Get dataset list by field name
+        ArrayList<String> datasetList = utils.getDatasetList(jsonResponse, "description");
+        System.out.println("Dataset List: " + datasetList);
+
+        // Example: Get count of 'catalogId' fields in 'reports' node
+        int catalogIdCount = utils.getNestedFieldCount(jsonResponse, "catalogId", "reports");
+        System.out.println("Catalog ID Count in Reports: " + catalogIdCount);
+    }
+}
+
