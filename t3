@@ -1,0 +1,265 @@
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+import org.json.JSONException;
+import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Map;
+
+@Component
+public class SdApiUtils_New {
+
+    /**
+     * Verifies if a dataset with the specified name exists in the JSON data.
+     *
+     * @param jsonData     The JSON data as a String.
+     * @param datasetName  The dataset name to search for.
+     * @return true if the dataset with the specified name exists, false otherwise.
+     * @throws JSONException If there's an issue parsing the JSON.
+     */
+    public boolean verifyDataset(String jsonData, String datasetName) throws JSONException {
+        // Parse the JSON data
+        JSONObject jsonObject;
+        try {
+            jsonObject = new JSONObject(new JSONTokener(jsonData));
+        } catch (Exception ex) {
+            System.out.println("Invalid JSON data: " + ex.getMessage());
+            return false;
+        }
+
+        // Check if 'datasets' key exists in the JSON data
+        if (!jsonObject.has("datasets")) {
+            System.out.println("No 'datasets' key found in JSON data.");
+            return false;
+        }
+
+        // Iterate through each dataset and verify the specified name
+        JSONArray datasets = jsonObject.getJSONArray("datasets");
+        for (int i = 0; i < datasets.length(); i++) {
+            JSONObject dataset = datasets.getJSONObject(i);
+            if (dataset.getString("name").equals(datasetName)) {
+                System.out.println("Dataset '" + datasetName + "' found in JSON data.");
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Retrieves a list of values for a specified field name across all datasets.
+     *
+     * @param jsonData   The JSON data as a String.
+     * @param fieldName  The field name to retrieve values for.
+     * @return An ArrayList containing all values found for the specified field name.
+     * @throws JSONException If there's an issue parsing the JSON.
+     */
+    public ArrayList<String> getDatasetList(String jsonData, String fieldName) throws JSONException {
+        ArrayList<String> datasetList = new ArrayList<>();
+
+        // Parse the JSON data
+        JSONObject jsonObject;
+        try {
+            jsonObject = new JSONObject(new JSONTokener(jsonData));
+        } catch (Exception ex) {
+            System.out.println("Invalid JSON data: " + ex.getMessage());
+            return datasetList;
+        }
+
+        // Check if 'datasets' key exists in the JSON data
+        if (!jsonObject.has("datasets")) {
+            System.out.println("No 'datasets' key found in JSON data.");
+            return datasetList;
+        }
+
+        // Iterate through each dataset and collect the specified field values
+        JSONArray datasets = jsonObject.getJSONArray("datasets");
+        for (int i = 0; i < datasets.length(); i++) {
+            JSONObject dataset = datasets.getJSONObject(i);
+            if (dataset.has(fieldName)) {
+                datasetList.add(dataset.getString(fieldName));
+                System.out.println(fieldName + " found: " + dataset.getString(fieldName));
+            }
+        }
+
+        return datasetList;
+    }
+
+    /**
+     * Counts the number of occurrences of a specific field within a nested structure.
+     *
+     * @param jsonResponse    The JSON response as a String.
+     * @param fieldName       The field name to count.
+     * @param nestedNodeName  The name of the nested node containing the field.
+     * @return The count of occurrences of the specified field within the nested node.
+     */
+    public int getNestedFieldCount(String jsonResponse, String fieldName, String nestedNodeName) {
+        JsonNode rootNode = parseJson(jsonResponse);
+
+        if (rootNode != null) {
+            if (nestedNodeName != null && !nestedNodeName.isEmpty()) {
+                return countItemsNested(rootNode, fieldName, nestedNodeName);
+            } else {
+                return countItems(rootNode, fieldName);
+            }
+        } else {
+            return 0;
+        }
+    }
+
+    /**
+     * Parses the JSON response string into a JsonNode object.
+     *
+     * @param jsonResponse The JSON response as a String.
+     * @return The root JsonNode, or null if there's an error during parsing.
+     */
+    private JsonNode parseJson(String jsonResponse) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readTree(jsonResponse);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * Counts the number of occurrences of a specific field in a JSON node.
+     *
+     * @param node      The JSON node to search within.
+     *
+     * @param fieldName The field name to count.
+     * @return The count of occurrences of the specified field.
+     */
+    private int countItems(JsonNode node, String fieldName) {
+        int count = 0;
+
+        if (node.has(fieldName)) {
+            if (node.get(fieldName).isArray()) {
+                count = node.get(fieldName).size();
+            } else {
+                count = 1; // Field exists as a single object
+            }
+        }
+
+        return count;
+    }
+
+    /**
+     * Recursively counts occurrences of a specific field within nested objects or arrays.
+     *
+     * @param node      The root JSON node to search.
+     * @param fieldName The field name to count.
+     * @return The total count of occurrences of the specified field within the JSON node.
+     */
+    private int countFieldOccurrences(JsonNode node, String fieldName) {
+        int count = 0;
+
+        if (node == null) {
+            return count;
+        }
+
+        if (node.isArray()) {
+            for (JsonNode item : node) {
+                count += countFieldOccurrences(item, fieldName);
+            }
+        } else if (node.isObject()) {
+            if (node.has(fieldName)) {
+                count++; // Field found, increment the count
+            }
+
+            // Recursively check nested fields
+            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                count += countFieldOccurrences(field.getValue(), fieldName);
+            }
+        }
+
+        return count;
+    }
+
+    /**
+     * Counts occurrences of a specific field within a specified nested node.
+     *
+     * @param rootNode       The root JSON node.
+     * @param fieldName      The field name to count.
+     * @param nestedNodeName The name of the nested node to search within.
+     * @return The count of occurrences of the specified field within the nested node.
+     */
+    private int countItemsNested(JsonNode rootNode, String fieldName, String nestedNodeName) {
+        JsonNode nestedNode = rootNode.get(nestedNodeName);
+
+        if (nestedNode != null) {
+            if (nestedNode.isArray()) {
+                int count = 0;
+                for (JsonNode item : nestedNode) {
+                    count += countFieldOccurrences(item, fieldName);
+                }
+                return count;
+            } else if (nestedNode.isObject()) {
+                return countFieldOccurrences(nestedNode, fieldName);
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Retrieves a list of values for a specific field from nested objects within the JSON data.
+     *
+     * @param jsonData       The JSON data as a String.
+     * @param nestedNodeName The name of the nested node to search within.
+     * @param fieldName      The field name to retrieve values for.
+     * @return An ArrayList containing the values found for the specified field within the nested node.
+     */
+    public ArrayList<String> getNestedFieldValues(String jsonData, String nestedNodeName, String fieldName) {
+        ArrayList<String> valuesList = new ArrayList<>();
+        JsonNode rootNode = parseJson(jsonData);
+
+        if (rootNode != null && rootNode.has(nestedNodeName)) {
+            JsonNode nestedNode = rootNode.get(nestedNodeName);
+
+            if (nestedNode.isArray()) {
+                for (JsonNode item : nestedNode) {
+                    if (item.has(fieldName)) {
+                        valuesList.add(item.get(fieldName).asText());
+                    }
+                }
+            } else if (nestedNode.isObject() && nestedNode.has(fieldName)) {
+                valuesList.add(nestedNode.get(fieldName).asText());
+            }
+        }
+
+        return valuesList;
+    }
+
+    /**
+     * Example of how to use the methods.
+     */
+    public static void main(String[] args) throws JSONException {
+        String jsonData = "{ \"datasets\": [ { \"name\": \"Test Dataset\", \"description\": \"Testing\", \"reports\": [{\"catalogId\": \"12345\"}, {\"catalogId\": \"67890\"}], \"boundaries\": { \"geography\": \"Global\" } } ] }";
+
+        SdApiUtils_New utils = new SdApiUtils_New();
+
+        // Example: Verify dataset by name
+        boolean exists = utils.verifyDataset(jsonData, "Test Dataset");
+        System.out.println("Dataset exists: " + exists);
+
+        // Example: Get a list of dataset descriptions
+        ArrayList<String> descriptions = utils.getDatasetList(jsonData, "description");
+        System.out.println("Dataset Descriptions: " + descriptions);
+
+        // Example: Count occurrences of 'catalogId' in 'reports'
+        int count = utils.getNestedFieldCount(jsonData, "catalogId", "reports");
+        System.out.println("Catalog ID Count: " + count);
+
+        // Example: Get list of 'catalogId' from 'reports'
+        ArrayList<String> catalogIds = utils.getNestedFieldValues(jsonData, "reports", "catalogId");
+        System.out.println("Catalog IDs: " + catalogIds);
+    }
+}
