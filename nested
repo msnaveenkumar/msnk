@@ -1,0 +1,110 @@
+package com.qmetry.qaf.example.test;
+
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
+
+public class JsonItemCounter_New_latestnested
+{
+
+    public static void main(String[] args) {
+        try {
+            // Path to the JSON file
+            File jsonFile = new File("test.json");
+
+            // Parse the JSON file
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(jsonFile);
+
+            // Traverse and count items within "datasets"
+            JsonNode datasetsNode = rootNode.get("datasets");
+            if (datasetsNode != null && datasetsNode.isArray()) {
+                for (JsonNode dataset : datasetsNode) {
+                    System.out.println("Dataset Name: " + dataset.get("name").asText());
+
+//                    countItems(dataset, "reports");
+                    countItems(dataset, "boundaries");
+//                    countItems(dataset, "dgcDataDomains");
+//                    countItems(dataset, "datasetElements");
+//                    countItems(dataset, "upstreamDatasets");
+//                    countItems(dataset, "systemDataElements");
+//                    countItems(dataset, "name");
+//                    countItems(dataset, "format");
+//                    countItems(dataset, "description");
+
+                    // Print specific descriptions
+//                    printDescriptions(dataset, "description");
+                }
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Method to count items in a given field
+    private static void countItems(JsonNode dataset, String fieldName) {
+        int count = countFieldOccurrences(dataset, fieldName);
+        System.out.println(fieldName + ": " + count + " occurrences");
+    }
+
+    // Method to count occurrences of a specific field in a JSON node
+    private static int countFieldOccurrences(JsonNode node, String fieldName) {
+        if (node == null) {
+            return 0;
+        }
+
+        int count = 0;
+
+        if (node.isArray()) {
+            for (JsonNode item : node) {
+                count += countFieldOccurrences(item, fieldName);
+            }
+        } else if (node.isObject()) {
+            // Check if the field exists at the current level
+            if (node.has(fieldName)) {
+                count += 1;  // Field found, count it
+            }
+            // Recursively check fields within nested objects
+            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                count += countFieldOccurrences(field.getValue(), fieldName);
+            }
+        }
+
+        return count;
+    }
+
+    // Method to print the "description" field from any level
+    private static void printDescriptions(JsonNode node, String fieldName) {
+        if (node == null) {
+            return;
+        }
+
+        if (node.isArray()) {
+            for (JsonNode item : node) {
+                printDescriptions(item, fieldName);
+            }
+        } else if (node.isObject()) {
+            // Print field if it exists at the current level
+            if (node.has(fieldName)) {
+                JsonNode fieldNode = node.get(fieldName);
+                if (fieldNode.isTextual()) {
+                    System.out.println("Found " + fieldName + ": " + fieldNode.asText());
+                }
+            }
+            // Recursively check fields within nested objects
+            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                printDescriptions(field.getValue(), fieldName);
+            }
+        }
+    }
+}
