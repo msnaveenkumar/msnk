@@ -1,0 +1,95 @@
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+
+public class JsonPathValidator {
+
+    /**
+     * Verifies if a specific JSON path exists and contains a particular value.
+     *
+     * @param jsonData   The JSON data as a String.
+     * @param jsonPath   The path to the field (e.g., "datasets[0].reports[1].catalogId").
+     * @param valueToCheck The value to check at the specified JSON path.
+     * @return True if the path exists and contains the specified value, false otherwise.
+     */
+    public boolean verifyJsonPathValue(String jsonData, String jsonPath, String valueToCheck) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(jsonData);
+
+            // Get the node at the specified JSON path
+            JsonNode nodeAtPath = getNodeAtJsonPath(rootNode, jsonPath);
+
+            // Check if the node exists and matches the value
+            if (nodeAtPath != null && nodeAtPath.isValueNode()) {
+                return nodeAtPath.asText().equals(valueToCheck);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
+    /**
+     * Retrieves the JsonNode at the specified JSON path.
+     * Supports simple paths like "datasets[0].reports[1].catalogId".
+     *
+     * @param rootNode The root JsonNode.
+     * @param jsonPath The JSON path in dot notation with optional array indices (e.g., "datasets[0].reports[1].catalogId").
+     * @return The JsonNode at the specified path, or null if not found.
+     */
+    private JsonNode getNodeAtJsonPath(JsonNode rootNode, String jsonPath) {
+        String[] pathParts = jsonPath.split("\\.");
+        JsonNode currentNode = rootNode;
+
+        for (String part : pathParts) {
+            if (part.contains("[") && part.contains("]")) {
+                // Handle array indexing (e.g., "datasets[0]")
+                String fieldName = part.substring(0, part.indexOf('['));
+                int arrayIndex = Integer.parseInt(part.substring(part.indexOf('[') + 1, part.indexOf(']')));
+
+                currentNode = currentNode.get(fieldName);
+                if (currentNode != null && currentNode.isArray() && currentNode.size() > arrayIndex) {
+                    currentNode = currentNode.get(arrayIndex);
+                } else {
+                    return null; // Path not found
+                }
+
+            } else {
+                // Handle regular object fields
+                currentNode = currentNode.get(part);
+                if (currentNode == null) {
+                    return null; // Path not found
+                }
+            }
+        }
+
+        return currentNode;
+    }
+
+    // Test method to demonstrate usage
+    public static void main(String[] args) {
+        String jsonData = "{ \"datasets\": [ { \"name\": \"Test Automation_Dataset_01\", \"reports\": [{ \"catalogId\": \"82fed24e-053d-4023-a505-0b2e4ad8b26f\" }, { \"catalogId\": \"2c779268-c730-40db-9cfc-6a8d79892a43\" }], \"boundaries\": { \"geography\": \"Boundary Geography | Undefined\" }, \"systemDataElements\": [ { \"name\": \"SDH_SDE_Automation_02\", \"systemKey\": \"2f05ebf2-2b4f-49bd-82e2-0c5bff134073\" }, { \"name\": \"SDH_SDE_Automation_01\", \"systemKey\": \"ee7eae54-393d-4f6d-a9ad-e6e8f92894a1\" } ] } ] }";
+
+        JsonPathValidator validator = new JsonPathValidator();
+
+        // Example 1: Check if the 'catalogId' in 'datasets[0].reports[1]' matches
+        boolean result1 = validator.verifyJsonPathValue(jsonData, "datasets[0].reports[1].catalogId", "2c779268-c730-40db-9cfc-6a8d79892a43");
+        System.out.println("Test 1 Result: " + result1); // Should print true
+
+        // Example 2: Check if the 'systemKey' in 'datasets[0].systemDataElements[1]' matches
+        boolean result2 = validator.verifyJsonPathValue(jsonData, "datasets[0].systemDataElements[1].systemKey", "ee7eae54-393d-4f6d-a9ad-e6e8f92894a1");
+        System.out.println("Test 2 Result: " + result2); // Should print true
+
+        // Example 3: Check if the 'geography' in 'datasets[0].boundaries' matches
+        boolean result3 = validator.verifyJsonPathValue(jsonData, "datasets[0].boundaries.geography", "Boundary Geography | Undefined");
+        System.out.println("Test 3 Result: " + result3); // Should print true
+
+        // Example 4: Check for a non-existent value
+        boolean result4 = validator.verifyJsonPathValue(jsonData, "datasets[0].reports[0].catalogId", "non-existent-id");
+        System.out.println("Test 4 Result: " + result4); // Should print false
+    }
+}
