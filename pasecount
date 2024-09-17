@@ -1,0 +1,113 @@
+package com.qmetry.qaf.example.test;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
+
+public class JsonItemCounter {
+
+    public static void main(String[] args) {
+        try {
+            // Path to the JSON file
+            File jsonFile = new File("test.json");
+
+            // Parse the JSON file
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(jsonFile);
+
+            // Traverse and count/verify items within "datasets"
+            JsonNode datasetsNode = rootNode.get("datasets");
+            if (datasetsNode != null && datasetsNode.isArray()) {
+                for (JsonNode dataset : datasetsNode) {
+                    System.out.println("Dataset Name: " + dataset.get("name").asText());
+
+                    // Example usage of counting occurrences
+                    countItems(dataset, "reports");
+                    countItems(dataset, "boundaries");
+                    countItems(dataset, "dgcDataDomains");
+                    countItems(dataset, "datasetElements");
+                    countItems(dataset, "upstreamDatasets");
+                    countItems(dataset, "systemDataElements");
+
+                    // Example usage of verifying specific values
+                    boolean reportCatalogExists = verifyFieldValue(dataset, "catalogId", "82fed24e-053d-4023-a505-0b2e4ad8b26f");
+                    System.out.println("Report with catalogId '82fed24e-053d-4023-a505-0b2e4ad8b26f' exists: " + reportCatalogExists);
+                }
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Method to count items in a given field
+    private static void countItems(JsonNode dataset, String fieldName) {
+        int count = countFieldOccurrences(dataset, fieldName);
+        System.out.println(fieldName + ": " + count + " occurrences");
+    }
+
+    // Method to count occurrences of a specific field in a JSON node
+    private static int countFieldOccurrences(JsonNode node, String fieldName) {
+        if (node == null) {
+            return 0;
+        }
+
+        int count = 0;
+
+        if (node.isArray()) {
+            for (JsonNode item : node) {
+                count += countFieldOccurrences(item, fieldName);
+            }
+        } else if (node.isObject()) {
+            // Check if the field exists at the current level
+            if (node.has(fieldName)) {
+                count += 1;  // Field found, count it
+            }
+            // Recursively check fields within nested objects
+            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                count += countFieldOccurrences(field.getValue(), fieldName);
+            }
+        }
+
+        return count;
+    }
+
+    // Method to verify if a specific field contains the expected value in the nested structure
+    private static boolean verifyFieldValue(JsonNode node, String fieldName, String expectedValue) {
+        if (node == null) {
+            return false;
+        }
+
+        if (node.isArray()) {
+            for (JsonNode item : node) {
+                if (verifyFieldValue(item, fieldName, expectedValue)) {
+                    return true;
+                }
+            }
+        } else if (node.isObject()) {
+            // Check if the field exists and matches the expected value
+            if (node.has(fieldName)) {
+                JsonNode fieldNode = node.get(fieldName);
+                if (fieldNode.isTextual() && fieldNode.asText().equals(expectedValue)) {
+                    return true;  // Match found
+                }
+            }
+            // Recursively check fields within nested objects
+            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                if (verifyFieldValue(field.getValue(), fieldName, expectedValue)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+}
