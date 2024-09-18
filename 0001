@@ -1,0 +1,56 @@
+/**
+ * Count the occurrences of 'boundaries', 'reports', and 'dgcDataDomains' in all datasets.
+ * 
+ * @param jsonString The JSON string containing datasets.
+ * @return A map with the counts for 'boundaries', 'reports', and 'dgcDataDomains'.
+ * @throws IOException If there is an issue parsing the JSON string.
+ */
+public Map<String, Integer> countFieldsInAllDatasets(String jsonString) throws IOException {
+    // Parse the JSON string
+    JsonNode rootNode = objectMapper.readTree(jsonString);
+
+    // Initialize the counts
+    Map<String, Integer> fieldCounts = new HashMap<>();
+    fieldCounts.put("boundaries", 0);
+    fieldCounts.put("reports", 0);
+    fieldCounts.put("dgcDataDomains", 0);
+
+    // Get the datasets node
+    JsonNode datasetsNode = rootNode.get("datasets");
+    if (datasetsNode != null && datasetsNode.isArray()) {
+        // Iterate over each dataset and count the occurrences of 'boundaries', 'reports', and 'dgcDataDomains'
+        for (JsonNode datasetNode : datasetsNode) {
+            // Count 'boundaries'
+            if (datasetNode.has("boundaries")) {
+                fieldCounts.put("boundaries", fieldCounts.get("boundaries") + datasetNode.get("boundaries").size());
+            }
+
+            // Count 'reports'
+            if (datasetNode.has("reports")) {
+                fieldCounts.put("reports", fieldCounts.get("reports") + datasetNode.get("reports").size());
+            }
+
+            // Count 'dgcDataDomains'
+            if (datasetNode.has("dgcDataDomains")) {
+                fieldCounts.put("dgcDataDomains", fieldCounts.get("dgcDataDomains") + datasetNode.get("dgcDataDomains").size());
+            }
+        }
+    }
+
+    return fieldCounts;
+}
+
+
+
+
+String jsonString = "{ \"datasets\": [ /* your datasets here */ ] }";
+JsonUtility jsonUtility = new JsonUtility();
+
+try {
+    Map<String, Integer> counts = jsonUtility.countFieldsInAllDatasets(jsonString);
+    System.out.println("Boundaries count: " + counts.get("boundaries"));
+    System.out.println("Reports count: " + counts.get("reports"));
+    System.out.println("DGC Data Domains count: " + counts.get("dgcDataDomains"));
+} catch (IOException e) {
+    e.printStackTrace();
+}
