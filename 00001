@@ -1,0 +1,131 @@
+package com.qmetry.qaf.example.test;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+public class JsonUtility {
+
+    public static void main(String[] args) {
+        // Sample JSON string (pretty printed)
+        String jsonResponse = "{\n" +
+                "    \"datasets\": [\n" +
+                "        {\n" +
+                "            \"name\": \"Test Automation_Dataset_01\",\n" +
+                "            \"format\": \"Protobuf\",\n" +
+                "            \"reports\": [\n" +
+                "                {\n" +
+                "                    \"catalogId\": \"82fed24e-053d-4023-a505-0b2e4ad8b26f\"\n" +
+                "                },\n" +
+                "                {\n" +
+                "                    \"catalogId\": \"2c779268-c730-40db-9cfc-6a8d79892a43\"\n" +
+                "                }\n" +
+                "            ],\n" +
+                "            \"boundaries\": {\n" +
+                "                \"geography\": \"Boundary Geography | Undefined\",\n" +
+                "                \"Product\": \"(Finance) Asset-Backed Securities\",\n" +
+                "                \"process\": \"3rd Party Management (TDR: L2 BP0001135)\"\n" +
+                "            },\n" +
+                "            \"description\": \"Testing Datasets in SDH\",\n" +
+                "            \"dgcDataDomains\": {\n" +
+                "                \"Global DGC Glossary\": [\n" +
+                "                    {\n" +
+                "                        \"domainName\": \"Financial Performance & Analytics Data\"\n" +
+                "                    }\n" +
+                "                ]\n" +
+                "            },\n" +
+                "            \"datasetElements\": [\n" +
+                "                {\n" +
+                "                    \"name\": \"SDH Autoamation_DatasetElement_01\",\n" +
+                "                    \"description\": \"Testing Datasets in SDH\",\n" +
+                "                    \"reportAttributes\": [\n" +
+                "                        {\n" +
+                "                            \"catalogId\": \"68839111-045e-4634-b79e-d686638c057c\"\n" +
+                "                        },\n" +
+                "                        {\n" +
+                "                            \"catalogId\": \"87bb7fd3-6116-4945-8ec1-b8a64d1ca7cc\"\n" +
+                "                        }\n" +
+                "                    ],\n" +
+                "                    \"systemDataElements\": [\n" +
+                "                        {\n" +
+                "                            \"name\": \"SDH_SDE_Automation_02\",\n" +
+                "                            \"systemKey\": \"2f05ebf2-2b4f-49bd-82e2-0c5bff134073\"\n" +
+                "                        },\n" +
+                "                        {\n" +
+                "                            \"name\": \"SDH_SDE_Automation_01\",\n" +
+                "                            \"systemKey\": \"ee7eae54-393d-4f6d-a9ad-e6e8f92894a1\"\n" +
+                "                        }\n" +
+                "                    ]\n" +
+                "                }\n" +
+                "            ],\n" +
+                "            \"upstreamDatasets\": [\n" +
+                "                {\n" +
+                "                    \"name\": \"DS_1503_932\",\n" +
+                "                    \"producerEonId\": 932\n" +
+                "                },\n" +
+                "                {\n" +
+                "                    \"name\": \"40761_DS2\",\n" +
+                "                    \"producerEonId\": 932\n" +
+                "                },\n" +
+                "                {\n" +
+                "                    \"name\": \"choir_ccar_constant_xva_crv_feed.gz\",\n" +
+                "                    \"producerEonId\": 932\n" +
+                "                },\n" +
+                "                {\n" +
+                "                    \"name\": \"DS_1503_932\",\n" +
+                "                    \"producerEonId\": 932\n" +
+                "                }\n" +
+                "            ],\n" +
+                "            \"systemDataElements\": [\n" +
+                "                {\n" +
+                "                    \"name\": \"SDH_SDE_Automation_02\",\n" +
+                "                    \"systemKey\": \"2f05ebf2-2b4f-49bd-82e2-0c5bff134073\"\n" +
+                "                },\n" +
+                "                {\n" +
+                "                    \"name\": \"SDH_SDE_Automation_01\",\n" +
+                "                    \"systemKey\": \"ee7eae54-393d-4f6d-a9ad-e6e8f92894a1\"\n" +
+                "                }\n" +
+                "            ]\n" +
+                "        }\n" +
+                "    ]\n" +
+                "}";
+
+        try {
+            // Parse the JSON response string
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(jsonResponse);
+
+            // Create an instance of JsonUtility to call non-static methods
+            JsonUtility jsonUtility = new JsonUtility();
+
+            // Example: Count occurrences of "reports" in a specific dataset
+            System.out.println("Counting 'reports' in 'Test Automation_Dataset_01':");
+            jsonUtility.countItems(rootNode, "Test Automation_Dataset_01", "reports");
+
+            // Example: Verify if a specific "catalogId" exists within "Test Automation_Dataset_01"
+            System.out.println("\nVerifying catalogId '82fed24e-053d-4023-a505-0b2e4ad8b26f' in 'Test Automation_Dataset_01':");
+            boolean catalogExists = jsonUtility.verifyFieldValue(rootNode, "Test Automation_Dataset_01", "catalogId", "82fed24e-053d-4023-a505-0b2e4ad8b26f");
+            System.out.println("Catalog ID exists: " + catalogExists);
+
+            // Example: Extract all catalogIds from "Test Automation_Dataset_01"
+            System.out.println("\nExtracting all catalogIds from 'Test Automation_Dataset_01':");
+            List<String> catalogIds = jsonUtility.extractFieldValues(rootNode, "Test Automation_Dataset_01", "catalogId");
+            System.out.println("All catalogIds: " + catalogIds);
+
+            // Example: Check if the "boundaries" field exists within "Test Automation_Dataset_01"
+            System.out.println("\nChecking if 'boundaries' exists in 'Test Automation_Dataset_01':");
+            boolean hasBoundaries = jsonUtility.fieldExists(rootNode, "Test Automation_Dataset_01", "boundaries");
+            System.out.println("Boundaries field exists: " + hasBoundaries);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Methods for findDatasetByName, countItems, verifyFieldValue, extractFieldValues, fieldExists are same as previous examples.
+}
