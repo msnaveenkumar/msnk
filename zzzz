@@ -1,0 +1,41 @@
+/**
+ * Verify if a specific nested field within an array contains a particular value.
+ * This method now handles cases where the target field (e.g., "geography") is an array inside another field.
+ *
+ * @param rootNode      The root node containing the datasets.
+ * @param datasetName   The name of the dataset to search.
+ * @param arrayFieldName The name of the array field (e.g., "boundaries").
+ * @param targetFieldName The nested field name to verify (e.g., "geography").
+ * @param expectedValue  The expected value of the nested field.
+ * @return True if the nested field contains the expected value, otherwise false.
+ */
+public boolean verifyNestedArrayFieldValue(JsonNode rootNode, String datasetName, String arrayFieldName, String targetFieldName, String expectedValue) {
+    // Find the dataset by name
+    JsonNode datasetNode = findDatasetByName(rootNode, datasetName);
+    if (datasetNode != null) {
+        // Check if the dataset contains the specified array field (e.g., "boundaries")
+        if (datasetNode.has(arrayFieldName)) {
+            JsonNode arrayNode = datasetNode.get(arrayFieldName);
+            if (arrayNode.isArray()) {
+                // Iterate through the array elements (e.g., boundaries array)
+                for (JsonNode item : arrayNode) {
+                    // Check if the target field (e.g., "geography") exists
+                    if (item.has(targetFieldName)) {
+                        JsonNode targetNode = item.get(targetFieldName);
+                        // If the target field is an array, search for the expected value within it
+                        if (targetNode.isArray()) {
+                            for (JsonNode element : targetNode) {
+                                if (element.asText().equals(expectedValue)) {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        System.out.println("Dataset '" + datasetName + "' not found.");
+    }
+    return false;
+}
