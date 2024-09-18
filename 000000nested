@@ -1,0 +1,33 @@
+/**
+ * Verify if a specific nested field within an array contains a particular value.
+ * This method will handle cases where the target field is within an array, such as "boundaries".
+ *
+ * @param rootNode      The root node containing the datasets.
+ * @param datasetName   The name of the dataset to search.
+ * @param arrayFieldName The name of the array field (e.g., "boundaries").
+ * @param targetFieldName The nested field name to verify (e.g., "geography").
+ * @param expectedValue  The expected value of the nested field.
+ * @return True if the nested field contains the expected value, otherwise false.
+ */
+public boolean verifyNestedFieldValue(JsonNode rootNode, String datasetName, String arrayFieldName, String targetFieldName, String expectedValue) {
+    // Find the dataset by name
+    JsonNode datasetNode = findDatasetByName(rootNode, datasetName);
+    if (datasetNode != null) {
+        // Check if the dataset contains the specified array field (e.g., "boundaries")
+        if (datasetNode.has(arrayFieldName)) {
+            JsonNode arrayNode = datasetNode.get(arrayFieldName);
+            if (arrayNode.isArray()) {
+                // Iterate through the array elements
+                for (JsonNode item : arrayNode) {
+                    // Check if the target field (e.g., "geography") exists and matches the expected value
+                    if (item.has(targetFieldName) && item.get(targetFieldName).asText().equals(expectedValue)) {
+                        return true;
+                    }
+                }
+            }
+        }
+    } else {
+        System.out.println("Dataset '" + datasetName + "' not found.");
+    }
+    return false;
+}
