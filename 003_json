@@ -1,0 +1,57 @@
+package com.qmetry.qaf.example.test;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+public class JsonUtility {
+
+    public static void main(String[] args) {
+        try {
+            // JSON string (replacing file input)
+            String jsonString = "{\n" +
+                    "    \"datasets\": [\n" +
+                    "        {\n" +
+                    "            \"name\": \"Test Automation_Dataset_01\",\n" +
+                    "            \"format\": \"Protobuf\",\n" +
+                    "            \"reports\": [\n" +// Parse the JSON string
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(jsonString);
+
+            // Create an instance of JsonUtility to call non-static methods
+            JsonUtility jsonUtility = new JsonUtility();
+
+            // Access the first dataset from the 'datasets' node
+            JsonNode datasetNode = rootNode.path("datasets").get(0);
+
+            // Count occurrences of "reports" in the dataset
+            System.out.println("Counting 'reports' in Test Automation_Dataset_01:");
+            jsonUtility.countItems(datasetNode, "reports");
+
+            // Verify if a specific "catalogId" exists within the dataset
+            System.out.println("\nVerifying catalogId '82fed24e-053d-4023-a505-0b2e4ad8b26f':");
+            boolean catalogExists = jsonUtility.verifyFieldValue(datasetNode, "catalogId", "82fed24e-053d-4023-a505-0b2e4ad8b26f");
+            System.out.println("Catalog ID exists: " + catalogExists);
+
+            // Extract all catalogIds from the dataset
+            System.out.println("\nExtracting all catalogIds:");
+            List<String> catalogIds = jsonUtility.extractFieldValues(datasetNode, "catalogId");
+            System.out.println("All catalogIds: " + catalogIds);
+
+            // Check if the "boundaries" field exists in the dataset
+            System.out.println("\nChecking if 'boundaries' exists:");
+            boolean hasBoundaries = jsonUtility.fieldExists(datasetNode, "boundaries");
+            System.out.println("Boundaries field exists: " + hasBoundaries);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Other methods remain unchanged (countItems, countFieldOccurrences, verifyFieldValue, extractFieldValues, etc.)
+}
