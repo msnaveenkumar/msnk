@@ -1,0 +1,55 @@
+    public static void main(String[] args) {
+        try {
+            // Path to the JSON file
+            File jsonFile = new File("test.json");
+
+            // Parse the JSON file
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(jsonFile);
+
+            // Create an instance of JsonUtility to call methods
+            JsonUtility_MS jsonUtility = new JsonUtility_MS();
+
+            // Example 1: Count occurrences of "reports" in a specific dataset
+   
+			/*
+			 * jsonUtility.countItems(rootNode, "Test Automation_Dataset_02", "format");
+			 * 
+			 * boolean catalogExists1 = jsonUtility.verifyFieldValue(rootNode,
+			 * "Test Automation_Dataset_02", "format", "XML");
+			 * 
+			 * System.out.println("Catalog ID exists: " + catalogExists1);
+			 * 
+			 * boolean catalogExists2 = jsonUtility.verifyFieldValue(rootNode,
+			 * "Test Automation_Dataset_02", "geography", "Boundary GeographyTest");
+			 * System.out.println("Catalog ID exists: " + catalogExists2);
+			 */
+            
+            System.out.println("\nExtracting all catalogIds from 'Test Automation_Dataset_01':");
+            List<String> catalogIds = jsonUtility.extractFieldValues(rootNode, "Test Automation_Dataset_01", "Product");
+            System.out.println("All catalogIds: " + catalogIds);
+            
+            /*
+			 * // Example 2: Verify if a specific "catalogId" exists within
+			 * "Test Automation_Dataset_01" System.out.
+			 * println("\nVerifying catalogId '82fed24e-053d-4023-a505-0b2e4ad8b26f' in 'Test Automation_Dataset_01':"
+			 * ); boolean catalogExists = jsonUtility.verifyFieldValue(rootNode,
+			 * "Test Automation_Dataset_01", "catalogId",
+			 * "82fed24e-053d-4023-a505-0b2e4ad8b26f");
+			 * System.out.println("Catalog ID exists: " + catalogExists);
+			 */
+//
+//            // Example 3: Extract all catalogIds from "Test Automation_Dataset_01"
+//            System.out.println("\nExtracting all catalogIds from 'Test Automation_Dataset_01':");
+//            List<String> catalogIds = jsonUtility.extractFieldValues(rootNode, "Test Automation_Dataset_01", "catalogId");
+//            System.out.println("All catalogIds: " + catalogIds);
+//
+//            // Example 4: Check if the "boundaries" field exists within "Test Automation_Dataset_01"
+//            System.out.println("\nChecking if 'boundaries' exists in 'Test Automation_Dataset_01':");
+//            boolean hasBoundaries = jsonUtility.fieldExists(rootNode, "Test Automation_Dataset_01", "boundaries");
+//            System.out.println("Boundaries field exists: " + hasBoundaries);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
