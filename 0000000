@@ -1,0 +1,235 @@
+
+    /**
+     * Find the dataset by name and return its JSON node.
+     * 
+     * @param rootNode    The root node containing the datasets array.
+     * @param datasetName The name of the dataset to search for.
+     * @return The JSON node of the dataset if found, otherwise null.
+     */
+    public JsonNode findDatasetByName(JsonNode rootNode, String datasetName) {
+        if (rootNode == null || !rootNode.has("datasets")) {
+            return null;
+        }
+
+        // Search through the datasets array
+        for (JsonNode datasetNode : rootNode.get("datasets")) {
+            if (datasetNode.has("name") && datasetNode.get("name").asText().equals(datasetName)) {
+                return datasetNode;
+            }
+        }
+
+        return null; // If no dataset matches the name
+    }
+
+    /**
+     * Count the occurrences of a specified field in a JSON node within the specified dataset.
+     * 
+     * @param rootNode   The root node containing the datasets.
+     * @param datasetName The name of the dataset to search.
+     * @param fieldName   The field name to count occurrences for.
+     */
+    public void countItems(JsonNode rootNode, String datasetName, String fieldName) {
+        JsonNode datasetNode = findDatasetByName(rootNode, datasetName);
+        if (datasetNode != null) {
+            int count = countFieldOccurrences(datasetNode, fieldName);
+            System.out.println(fieldName + ": " + count + " occurrences");
+        } else {
+            System.out.println("Dataset '" + datasetName + "' not found.");
+        }
+    }
+
+    /**
+     * Recursively count the occurrences of a field within the JSON structure.
+     * This method navigates through nested arrays and objects to find the specified field.
+     * 
+     * @param node      The root node to search.
+     * @param fieldName The field name to count.
+     * @return The total count of occurrences.
+     */
+    public int countFieldOccurrences(JsonNode node, String fieldName) {
+        if (node == null) {
+            return 0;
+        }
+
+        int count = 0;
+
+        if (node.isArray()) {
+            for (JsonNode item : node) {
+                count += countFieldOccurrences(item, fieldName);
+            }
+        } else if (node.isObject()) {
+            if (node.has(fieldName)) {
+                count++;
+            }
+
+            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                count += countFieldOccurrences(field.getValue(), fieldName);
+            }
+        }
+
+        return count;
+    }
+
+    /**
+     * Verify if a specific field contains a particular value within the specified dataset.
+     * 
+     * @param rootNode     The root node containing the datasets.
+     * @param datasetName  The name of the dataset to search.
+     * @param fieldName    The field to verify.
+     * @param expectedValue The expected value of the field.
+     * @return True if the value is found, otherwise false.
+     */
+    public boolean verifyFieldValue(JsonNode rootNode, String datasetName, String fieldName, String expectedValue) {
+        JsonNode datasetNode = findDatasetByName(rootNode, datasetName);
+        if (datasetNode != null) {
+            return verifyFieldValue(datasetNode, fieldName, expectedValue);
+        } else {
+            System.out.println("Dataset '" + datasetName + "' not found.");
+            return false;
+        }
+    }
+
+    /**
+     * Recursively verify if a field has the expected value.
+     * 
+     * @param node         The node to search.
+     * @param fieldName    The field to verify.
+     * @param expectedValue The expected value.
+     * @return True if the value is found, otherwise false.
+     */
+    public boolean verifyFieldValue(JsonNode node, String fieldName, String expectedValue) {
+        if (node == null) {
+            return false;
+        }
+
+        if (node.isArray()) {
+            for (JsonNode item : node) {
+                if (verifyFieldValue(item, fieldName, expectedValue)) {
+                    return true;
+                }
+            }
+        } else if (node.isObject()) {
+            if (node.has(fieldName)) {
+                JsonNode fieldNode = node.get(fieldName);
+                if (fieldNode.isTextual() && fieldNode.asText().equals(expectedValue)) {
+                    return true;
+                }
+            }
+
+            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                if (verifyFieldValue(field.getValue(), fieldName, expectedValue)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Extract all values for a specific field within the specified dataset.
+     * 
+     * @param rootNode    The root node containing the datasets.
+     * @param datasetName The name of the dataset to search.
+     * @param fieldName   The field name to extract values for.
+     * @return A list of values found for the specified field.
+     */
+    public List<String> extractFieldValues(JsonNode rootNode, String datasetName, String fieldName) {
+        JsonNode datasetNode = findDatasetByName(rootNode, datasetName);
+        List<String> values = new ArrayList<>();
+        if (datasetNode != null) {
+            extractFieldValuesRecursively(datasetNode, fieldName, values);
+        } else {
+            System.out.println("Dataset '" + datasetName + "' not found.");
+        }
+        return values;
+    }
+
+    /**
+     * Recursively extract values for a field and add them to the provided list.
+     * 
+     * @param node      The root node to search.
+     * @param fieldName The field name to extract values for.
+     * @param values    The list to store the extracted values.
+     */
+    public void extractFieldValuesRecursively(JsonNode node, String fieldName, List<String> values) {
+        if (node == null) {
+            return;
+        }
+
+        if (node.isArray()) {
+            for (JsonNode item : node) {
+                extractFieldValuesRecursively(item, fieldName, values);
+            }
+        } else if (node.isObject()) {
+            if (node.has(fieldName)) {
+                JsonNode fieldNode = node.get(fieldName);
+                if (fieldNode.isTextual()) {
+                    values.add(fieldNode.asText());
+                }
+            }
+
+            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                extractFieldValuesRecursively(field.getValue(), fieldName, values);
+            }
+        }
+    }
+
+    /**
+     * Check if a specified field exists within the specified dataset.
+     * 
+     * @param rootNode    The root node containing the datasets.
+     * @param datasetName The name of the dataset to search.
+     * @param fieldName   The field name to check.
+     * @return True if the field is found, otherwise false.
+     */
+    public boolean fieldExists(JsonNode rootNode, String datasetName, String fieldName) {
+        JsonNode datasetNode = findDatasetByName(rootNode, datasetName);
+        if (datasetNode != null) {
+            return fieldExistsInNode(datasetNode, fieldName);
+        } else {
+            System.out.println("Dataset '" + datasetName + "' not found.");
+            return false;
+        }
+    }
+
+    /**
+     * Recursively check if a field exists in the given JSON node.
+     * 
+     * @param node      The JSON node to search.
+     * @param fieldName The field name to check for existence.
+     * @return True if the field is found, otherwise false.
+     */
+    public boolean fieldExistsInNode(JsonNode node, String fieldName) {
+        if (node == null) {
+            return false;
+        }
+
+        if (node.isArray()) {
+            for (JsonNode item : node) {
+                if (fieldExistsInNode(item, fieldName)) {
+                    return true;
+                }
+            }
+        } else if (node.isObject()) {
+            if (node.has(fieldName)) {
+                return true;
+            }
+
+            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                if (fieldExistsInNode(field.getValue(), fieldName)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
