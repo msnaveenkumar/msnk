@@ -1,0 +1,65 @@
+package com.qmetry.qaf.example.test;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+public class JsonUtility {
+
+    public static void main(String[] args) {
+        try {
+            // Example JSON string
+            String jsonString = "{\n" +
+                    "    \"datasets\": [\n" +
+                    "        {\n" +
+                    "            \"name\": \"Test Automation_Dataset_01\",\n" +
+                    "            \"reports\": [\n" +
+                    "                { \"catalogId\": \"82fed24e-053d-4023-a505-0b2e4ad8b26f\" },\n" +
+                    "                { \"catalogId\": \"2c779268-c730-40db-9cfc-6a8d79892a43\" }\n" +
+                    "            ],\n" +
+                    "            \"boundaries\": {\n" +
+                    "                \"geography\": \"Boundary Geography | Undefined\",\n" +
+                    "                \"Product\": \"(Finance) Asset-Backed Securities\"\n" +
+                    "            }\n" +
+                    "        }\n" +
+                    "    ]\n" +
+                    "}";
+
+            // Parse the JSON string
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(jsonString);
+
+            // Create an instance of JsonUtility to call non-static methods
+            JsonUtility jsonUtility = new JsonUtility();
+
+            // Example: Count occurrences of "reports" in a specific dataset
+            System.out.println("Counting 'reports' in 'Test Automation_Dataset_01':");
+            jsonUtility.countItems(rootNode, "Test Automation_Dataset_01", "reports");
+
+            // Example: Verify if a specific "catalogId" exists within "Test Automation_Dataset_01"
+            System.out.println("\nVerifying catalogId '82fed24e-053d-4023-a505-0b2e4ad8b26f' in 'Test Automation_Dataset_01':");
+            boolean catalogExists = jsonUtility.verifyFieldValue(rootNode, "Test Automation_Dataset_01", "catalogId", "82fed24e-053d-4023-a505-0b2e4ad8b26f");
+            System.out.println("Catalog ID exists: " + catalogExists);
+
+            // Example: Extract all catalogIds from "Test Automation_Dataset_01"
+            System.out.println("\nExtracting all catalogIds from 'Test Automation_Dataset_01':");
+            List<String> catalogIds = jsonUtility.extractFieldValues(rootNode, "Test Automation_Dataset_01", "catalogId");
+            System.out.println("All catalogIds: " + catalogIds);
+
+            // Example: Check if the "boundaries" field exists within "Test Automation_Dataset_01"
+            System.out.println("\nChecking if 'boundaries' exists in 'Test Automation_Dataset_01':");
+            boolean hasBoundaries = jsonUtility.fieldExists(rootNode, "Test Automation_Dataset_01", "boundaries");
+            System.out.println("Boundaries field exists: " + hasBoundaries);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Other methods remain unchanged (findDatasetByName, countItems, countFieldOccurrences, verifyFieldValue, extractFieldValues, fieldExists, etc.)
+}
