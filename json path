@@ -1,0 +1,110 @@
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+/**
+ * Utility class for JSON parsing and handling nested structures.
+ * Provides methods to extract, count, and verify values in a nested JSON structure.
+ */
+public class JsonUtility {
+
+    /**
+     * Retrieves a nested value from a JSONObject given a JSON path.
+     * This method navigates the JSON structure based on the provided path and retrieves the value.
+     * 
+     * @param jsonObject The root JSON object
+     * @param path The path to the field (e.g., "datasets[0].upstreamDatasets[0].producerEonId")
+     * @return The value as an Object, or null if not found
+     */
+    public Object getNestedValue(JSONObject jsonObject, String path) {
+        String[] keys = path.split("\\.");
+        Object currentObject = jsonObject;
+
+        for (String key : keys) {
+            if (currentObject instanceof JSONObject) {
+                JSONObject currentJsonObject = (JSONObject) currentObject;
+                if (key.contains("[")) {
+                    String baseKey = key.substring(0, key.indexOf("["));
+                    int index = Integer.parseInt(key.substring(key.indexOf("[") + 1, key.indexOf("]")));
+                    JSONArray jsonArray = currentJsonObject.optJSONArray(baseKey);
+                    if (jsonArray != null && jsonArray.length() > index) {
+                        currentObject = jsonArray.get(index);
+                    } else {
+                        return null; // Index out of bounds
+                    }
+                } else {
+                    currentObject = currentJsonObject.opt(key);
+                }
+            } else {
+                return null;
+            }
+        }
+        return currentObject;
+    }
+
+    /**
+     * Counts occurrences of a key in a nested JSON structure.
+     * 
+     * @param jsonObject The root JSON object
+     * @param key The key to count occurrences of
+     * @return The count of the key in the structure
+     */
+    public int countOccurrences(JSONObject jsonObject, String key) {
+        return countOccurrencesRecursive(jsonObject, key);
+    }
+
+    private int countOccurrencesRecursive(Object object, String key) {
+        int count = 0;
+
+        if (object instanceof JSONObject) {
+            JSONObject jsonObject = (JSONObject) object;
+            for (String jsonKey : jsonObject.keySet()) {
+                if (jsonKey.equals(key)) {
+                    count++;
+                }
+                count += countOccurrencesRecursive(jsonObject.get(jsonKey), key);
+            }
+        } else if (object instanceof JSONArray) {
+            JSONArray jsonArray = (JSONArray) object;
+            for (int i = 0; i < jsonArray.length(); i++) {
+                count += countOccurrencesRecursive(jsonArray.get(i), key);
+            }
+        }
+
+        return count;
+    }
+
+    /**
+     * Checks if a key exists in the JSON structure.
+     * 
+     * @param jsonObject The root JSON object
+     * @param path The path to the key (e.g., "datasets[0].upstreamDatasets[0].producerEonId")
+     * @return True if the key exists, false otherwise
+     */
+    public boolean keyExists(JSONObject jsonObject, String path) {
+        return getNestedValue(jsonObject, path) != null;
+    }
+
+    /**
+     * Extracts and prints sample value for demonstration.
+     * This method can be customized for extracting specific fields from nested structures.
+     */
+    public static void main(String[] args) {
+        String jsonString = "{...}"; // Replace with your actual JSON string
+        JSONObject jsonObject = new JSONObject(jsonString);
+
+        JsonUtility utility = new JsonUtility();
+        
+        // Example path based on the image provided
+        String path = "datasets[0].upstreamDatasets[0].producerEonId";
+        Object value = utility.getNestedValue(jsonObject, path);
+        System.out.println("Extracted value: " + value);
+
+        // Count occurrences of a key
+        int count = utility.countOccurrences(jsonObject, "name");
+        System.out.println("Occurrences of 'name': " + count);
+
+        // Check if a specific key exists
+        boolean exists = utility.keyExists(jsonObject, path);
+        System.out.println("Key exists: " + exists);
+    }
+}
