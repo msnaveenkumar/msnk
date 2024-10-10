@@ -1,0 +1,37 @@
+import org.openqa.selenium.*;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+/**
+ * Uploads a file to a Shadow DOM file upload component.
+ * 
+ * @param driver The WebDriver instance.
+ * @param shadowHostSelector The CSS selector for the Shadow DOM host element.
+ * @param fileInputId The ID of the file input element within the Shadow DOM.
+ * @param filePath The path to the file to be uploaded.
+ */
+public void uploadFileToShadowDom(WebDriver driver, String shadowHostSelector, String fileInputId, String filePath) {
+    try {
+        // Locate the shadow host element
+        WebElement shadowHost = driver.findElement(By.cssSelector(shadowHostSelector));
+        
+        // Access the shadow root of the host element
+        WebElement shadowRoot = (WebElement) ((JavascriptExecutor) driver)
+                .executeScript("return arguments[0].shadowRoot", shadowHost);
+        
+        // Wait until the file input element is available within the shadow root
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement fileInput = wait.until(ExpectedConditions.visibilityOf(
+                shadowRoot.findElement(By.id(fileInputId))
+        ));
+        
+        // Upload the file by sending the file path to the input element
+        fileInput.sendKeys(filePath);
+        
+        System.out.println("File uploaded successfully: " + filePath);
+    } catch (NoSuchElementException e) {
+        System.out.println("File input element not found within the Shadow DOM: " + e.getMessage());
+    } catch (Exception e) {
+        System.out.println("Error during file upload: " + e.getMessage());
+    }
+}
