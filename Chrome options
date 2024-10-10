@@ -1,0 +1,35 @@
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.remote.CapabilityType;
+import org.openqa.selenium.remote.DesiredCapabilities;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class DisableDownloadPrompt {
+    public static void main(String[] args) {
+        // Set up Chrome options
+        ChromeOptions options = new ChromeOptions();
+
+        // Disable download prompts
+        Map<String, Object> prefs = new HashMap<>();
+        prefs.put("profile.default_content_settings.popups", 0);
+        prefs.put("download.prompt_for_download", false);
+        prefs.put("download.directory_upgrade", true);
+        prefs.put("download.default_directory", "/path/to/download/directory"); // Set default download directory
+
+        options.setExperimentalOption("prefs", prefs);
+
+        // Initialize WebDriver
+        WebDriver driver = new ChromeDriver(options);
+
+        // Open the website
+        driver.get("https://yourwebsite.com");
+
+        // Your test steps...
+
+        // Close the browser
+        driver.quit();
+    }
+}
