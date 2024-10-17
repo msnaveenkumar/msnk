@@ -1,0 +1,45 @@
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
+import java.util.Optional;
+import java.util.stream.StreamSupport;
+
+public class JsonUtility {
+
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
+
+    public int getMaturityLevelFromJsonWithAcceptanceCriteria(String jsonResponse) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(jsonResponse);
+
+            Optional<JsonNode> recentNode = getLatestNodeWithAcceptanceCriteria(rootNode);
+
+            return recentNode.map(node -> node.get("maturityLevel").asInt()).orElse(-1);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return -1;
+        }
+    }
+
+    private Optional<JsonNode> getLatestNodeWithAcceptanceCriteria(JsonNode rootNode) {
+        LocalDate thresholdDate = LocalDate.now().minusDays(14);
+
+        return StreamSupport.stream(rootNode.spliterator(), false)
+            .filter(node -> node.has("disregarded") && !node.get("disregarded").asBoolean())
+            .filter(node -> node.has("lastDateUsed") && LocalDate.parse(node.get("lastDateUsed").asText(), formatter).isAfter(thresholdDate))
+            .min(Comparator.comparingInt(node -> node.get("maturityLevel").asInt())); // Select the minimum maturity level in use within 14 days
+    }
+
+    public static void main(String[] args) {
+        String jsonResponse = "[ ... ]";  // Your JSON data here
+        JsonUtility utility = new JsonUtility();
+        int maturityLevel = utility.getMaturityLevelFromJsonWithAcceptanceCriteria(jsonResponse);
+        System.out.println("Maturity Level: " + maturityLevel);
+    }
+}
