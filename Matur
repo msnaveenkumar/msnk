@@ -1,0 +1,103 @@
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.File;
+import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+class Batch {
+    public String batchUuid;
+    public String manifestUuid;
+    public String meta;
+    public String project;
+    public String release;
+    public String fileLocation;
+    public String insertTime;
+    public String ingestionType;
+    public String fdcApiBatchId;
+    public int maturityLevel;
+    public boolean disregarded;
+
+    // No-arg constructor required for Jackson
+    public Batch() {
+    }
+}
+
+public class MaturityLevelCalculator {
+
+    // Method to parse the date
+    private static LocalDateTime parseDate(String date) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS");
+        return LocalDateTime.parse(date, formatter);
+    }
+
+    // Method to calculate the maturity level
+    public static int calculateMaturityLevel(List<Batch> batches) {
+        Batch lastLevel1Or2Batch = null;
+        Batch lastLevel3Batch = null;
+
+        // Iterate through batches to find the most recent Level 1/2 and Level 3 batches
+        for (Batch batch : batches) {
+            if (batch.disregarded) {
+                continue;
+            }
+            LocalDateTime batchTime = parseDate(batch.insertTime);
+
+            if (batch.maturityLevel == 3 && (lastLevel3Batch == null || parseDate(lastLevel3Batch.insertTime).isBefore(batchTime))) {
+                lastLevel3Batch = batch;
+            }
+
+            if ((batch.maturityLevel == 1 || batch.maturityLevel == 2) && (lastLevel1Or2Batch == null || parseDate(lastLevel1Or2Batch.insertTime).isBefore(batchTime))) {
+                lastLevel1Or2Batch = batch;
+            }
+        }
+
+        // Scenario 1: Set to Level 3 on successful upload when no other mechanisms have been used
+        if (lastLevel1Or2Batch == null && lastLevel3Batch != null) {
+            return 3;
+        }
+
+        // Scenario 2: Set to Level 3 if Level 1/2 mechanisms have not been used in over 2 weeks
+        if (lastLevel3Batch != null && lastLevel1Or2Batch != null) {
+            long daysBetween = Duration.between(parseDate(lastLevel1Or2Batch.insertTime), parseDate(lastLevel3Batch.insertTime)).toDays();
+            if (daysBetween > 14) {
+                return 3;
+            }
+        }
+
+        // Scenario 3: Leave level unchanged if a Level 1 or 2 mechanism has been used within the last 2 weeks
+        if (lastLevel1Or2Batch != null && lastLevel3Batch != null) {
+            long daysBetween = Duration.between(parseDate(lastLevel1Or2Batch.insertTime), parseDate(lastLevel3Batch.insertTime)).toDays();
+            if (daysBetween <= 14) {
+                return lastLevel1Or2Batch.maturityLevel;
+            }
+        }
+
+        // Scenario 4: Set to Level 1 or 2 if such a mechanism has been used
+        if (lastLevel1Or2Batch != null) {
+            return lastLevel1Or2Batch.maturityLevel;
+        }
+
+        // Default to last Level 3 maturity if other conditions don't match
+        if (lastLevel3Batch != null) {
+            return lastLevel3Batch.maturityLevel;
+        }
+
+        return 1; // Default if no conditions are met
+    }
+
+    public static void main(String[] args) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            // Read JSON from file
+            List<Batch> batches = objectMapper.readValue(new File("batches.json"), new TypeReference<List<Batch>>() {});
+            int result = calculateMaturityLevel(batches);
+            System.out.println("Maturity Level: " + result);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
