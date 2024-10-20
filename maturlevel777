@@ -1,0 +1,101 @@
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.io.File;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+public class MaturityLevelCalculator {
+
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
+
+    /**
+     * This method reads the JSON file, parses it, and calculates the final maturity level.
+     *
+     * @param filePath the path to the JSON file containing the manifests.
+     * @return the calculated maturity level.
+     * @throws IOException if the file reading or JSON parsing fails.
+     */
+    public static int calculateMaturityLevelFromFile(String filePath) throws IOException {
+        // Read JSON from file
+        JsonNode jsonData = readJsonFromFile(filePath);
+
+        // Calculate the final maturity level based on the list of manifests
+        return getMaturityLevel(jsonData);
+    }
+
+    /**
+     * This method reads JSON data from a file and returns it as a JsonNode.
+     *
+     * @param filePath the path to the JSON file.
+     * @return a JsonNode representing the parsed JSON data.
+     * @throws IOException if the file cannot be read or parsed.
+     */
+    public static JsonNode readJsonFromFile(String filePath) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        return objectMapper.readTree(new File(filePath));
+    }
+
+    /**
+     * This method calculates the maturity level based on the JSON array of manifests.
+     *
+     * @param jsonData the JsonNode representing the list of manifests.
+     * @return the calculated maturity level.
+     */
+    public static int getMaturityLevel(JsonNode jsonData) {
+        ArrayNode manifests = (ArrayNode) jsonData;
+
+        // Filter the manifests to exclude disregarded ones and find the latest one
+        JsonNode latestManifest = StreamSupport.stream(manifests.spliterator(), false)
+                .filter(manifest -> !manifest.get("disregarded").asBoolean())
+                .max(Comparator.comparing(manifest -> LocalDateTime.parse(manifest.get("insertTime").asText(), formatter)))
+                .orElse(null);
+
+        if (latestManifest == null) {
+            return 0; // Default or unknown maturity level if no valid manifest is found
+        }
+
+        // Check if there is a recent REST ingestion within the last 14 days
+        boolean recentLevel1 = StreamSupport.stream(manifests.spliterator(), false)
+                .filter(manifest -> manifest.get("ingestionType").asText().equals("REST"))
+                .anyMatch(manifest -> {
+                    LocalDateTime insertTime = LocalDateTime.parse(manifest.get("insertTime").asText(), formatter);
+                    return insertTime.isAfter(LocalDateTime.now().minus(14, ChronoUnit.DAYS));
+                });
+
+        if (recentLevel1) {
+            return 1; // Override with Level 1 if a recent REST ingestion is found
+        }
+
+        // Check if the latest ingestion type is TRAIN or CASC_DIRECT_DROPBOX
+        String latestIngestionType = latestManifest.get("ingestionType").asText();
+        if (latestIngestionType.equals("TRAIN") || latestIngestionType.equals("CASC_DIRECT_DROPBOX")) {
+            return 3;
+        }
+
+        // Otherwise, return the maturity level of the latest valid manifest
+        return latestManifest.get("maturityLevel").asInt();
+    }
+
+    public static void main(String[] args) {
+        try {
+            // Path to the JSON file containing the manifests
+            String filePath = "manifests.json";
+
+            // Calculate the maturity level from the JSON file
+            int maturityLevel = calculateMaturityLevelFromFile(filePath);
+
+            // Output the final calculated maturity level
+            System.out.println("Final Maturity Level: " + maturityLevel);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
