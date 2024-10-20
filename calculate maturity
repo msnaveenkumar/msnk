@@ -1,0 +1,140 @@
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
+import java.util.stream.StreamSupport;
+
+public class MaturityLevelCalculator {
+
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
+
+    /**
+     * This method parses the JSON string and calculates the final maturity level.
+     *
+     * @param jsonString the JSON string representing the manifests.
+     * @return the calculated maturity level.
+     * @throws IOException if the JSON parsing fails.
+     */
+    public static int calculateMaturityLevelFromString(String jsonString) throws IOException {
+        // Parse JSON string
+        JsonNode jsonData = parseJsonString(jsonString);
+
+        // Calculate the final maturity level based on the list of manifests
+        return getMaturityLevel(jsonData);
+    }
+
+    /**
+     * This method parses a JSON string and returns it as a JsonNode.
+     *
+     * @param jsonString the JSON string.
+     * @return a JsonNode representing the parsed JSON data.
+     * @throws IOException if the JSON string cannot be parsed.
+     */
+    public static JsonNode parseJsonString(String jsonString) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        return objectMapper.readTree(jsonString);
+    }
+
+    /**
+     * This method calculates the maturity level based on the JSON array of manifests.
+     *
+     * @param jsonData the JsonNode representing the list of manifests.
+     * @return the calculated maturity level.
+     */
+    public static int getMaturityLevel(JsonNode jsonData) {
+        ArrayNode manifests = (ArrayNode) jsonData;
+
+        // Filter the manifests to exclude disregarded ones and find the latest one
+        JsonNode latestManifest = StreamSupport.stream(manifests.spliterator(), false)
+                .filter(manifest -> !manifest.get("disregarded").asBoolean())
+                .max(Comparator.comparing(manifest -> LocalDateTime.parse(manifest.get("insertTime").asText(), formatter)))
+                .orElse(null);
+
+        if (latestManifest == null) {
+            return 0; // Default or unknown maturity level if no valid manifest is found
+        }
+
+        // Check if there is a recent REST ingestion within the last 14 days
+        boolean recentLevel1 = StreamSupport.stream(manifests.spliterator(), false)
+                .filter(manifest -> manifest.get("ingestionType").asText().equals("REST"))
+                .anyMatch(manifest -> {
+                    LocalDateTime insertTime = LocalDateTime.parse(manifest.get("insertTime").asText(), formatter);
+                    return insertTime.isAfter(LocalDateTime.now().minus(14, ChronoUnit.DAYS));
+                });
+
+        if (recentLevel1) {
+            return 1; // Override with Level 1 if a recent REST ingestion is found
+        }
+
+        // Check if the latest ingestion type is TRAIN or CASC_DIRECT_DROPBOX
+        String latestIngestionType = latestManifest.get("ingestionType").asText();
+        if (latestIngestionType.equals("TRAIN") || latestIngestionType.equals("CASC_DIRECT_DROPBOX")) {
+            return 3;
+        }
+
+        // Otherwise, return the maturity level of the latest valid manifest
+        return latestManifest.get("maturityLevel").asInt();
+    }
+
+    public static void main(String[] args) {
+        try {
+            // JSON string representing the list of manifests
+            String jsonString = """
+            [
+              {
+                "batchUuid": "77fa3103-05c8-42c1-8d42-513d6cf96a81",
+                "manifestUuid": "5ed8dc87-84bf-492c-acad-c2042d6555b2",
+                "meta": "Direct",
+                "project": "WithCasCDirect",
+                "release": null,
+                "fileLocation": "/v/WithCasc_CasCDirect/20240704 141134_cascManifest-BU-identified-SD.yaml",
+                "insertTime": "2024-07-08T07:40:35.119981",
+                "ingestionType": "CASC_DIRECT_DROPBOX",
+                "fdcApiBatchId": "ee2d3447-2f78-4364-9b6a-2d4b715688a4",
+                "maturityLevel": 3,
+                "disregarded": false
+              },
+              {
+                "batchUuid": "8abb9317-eb20-40ed-98c5-158338b91718",
+                "manifestUuid": "401f1209-151a-4aeb-a5af-90c069f3bf40",
+                "meta": null,
+                "project": null,
+                "release": null,
+                "fileLocation": null,
+                "insertTime": "2023-10-17T12:13:12.871376",
+                "ingestionType": "REST",
+                "fdcApiBatchId": "e7cfffb7-986a-4152-85c2-c8ca3e36f998",
+                "maturityLevel": 1,
+                "disregarded": false
+              },
+              {
+                "batchUuid": "6f3dcccf-4395-4e07-aae7-740ba6c8b6cb",
+                "manifestUuid": "46821871-215f-4aed-b41c-18661f100a72",
+                "meta": "edap",
+                "project": "fdc automation",
+                "release": "2024.05.29-1",
+                "fileLocation": "/ms/dist/edap/PROJ/fdc_automation/2024.05.29-1/common/msde-train/casc",
+                "insertTime": "2024-05-29T08:11:33.837276",
+                "ingestionType": "TRAIN",
+                "fdcApiBatchId": "98c4449f-3653-4395-9e37-fb3e8408d097",
+                "maturityLevel": 3,
+                "disregarded": false
+              }
+            ]
+            """;
+
+            // Calculate the maturity level from the JSON string
+            int maturityLevel = calculateMaturityLevelFromString(jsonString);
+
+            // Output the final calculated maturity level
+            System.out.println("Final Maturity Level: " + maturityLevel);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
